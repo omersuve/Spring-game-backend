@@ -39,7 +39,7 @@ public class TournamentController {
     }
 
     @GetMapping("/rank/{userId}")
-    public ResponseEntity<Object> getRankTournamentGroup(@PathVariable("userId") Long userId) {
+    public ResponseEntity<Object> getUserRankTournamentGroup(@PathVariable("userId") Long userId) {
         Long rank = this.leaderboardService.getUserRankInGroup(userId);
         if (rank == null)
             return ResponseHandler.responseBuilder("Rank not found!", HttpStatus.NOT_FOUND, null);

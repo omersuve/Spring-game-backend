@@ -97,10 +97,11 @@ public class UserService {
         } else if (user.getRewardToClaim() == -1) {
             return ResponseHandler.responseBuilder("User has no reward to claim!", HttpStatus.NOT_FOUND, null);
         } else {
-            user.setCoin(user.getCoin() + user.getRewardToClaim());
+            Integer reward = user.getRewardToClaim();
+            user.setCoin(user.getCoin() + reward);
             user.setRewardToClaim(-1);
             this.updateUser(user);
-            return ResponseHandler.responseBuilder(user.getRewardToClaim().toString() + " gold reward claimed successfully!", HttpStatus.OK, user);
+            return ResponseHandler.responseBuilder(reward + " gold reward claimed successfully!", HttpStatus.OK, user);
         }
     }
 

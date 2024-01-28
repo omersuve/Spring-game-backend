@@ -1,8 +1,10 @@
 package com.dream.backend.controller;
 
 import com.dream.backend.model.User;
+import com.dream.backend.response.ResponseHandler;
 import com.dream.backend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +25,8 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<Object> createUserDetails(@RequestBody User user) {
+        if (user.getUsername() == null)
+            return ResponseHandler.responseBuilder("Username field is missing in request body", HttpStatus.BAD_REQUEST, null);
         return this.userService.createUser(user);
     }
 

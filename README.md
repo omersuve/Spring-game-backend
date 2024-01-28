@@ -7,7 +7,7 @@ Dream Games Case Study
 * Redis
 * Unittest
 
-## Installation and Usage
+## How to run
 
 -  JDK version 21
 -  Maven
@@ -41,4 +41,4 @@ After the first attempt, I created *GroupQueue*, *TournamentGroups*, *GroupLeade
 
 ### Design Diagram
 
-<img src="https://github.com/omersuve/DreamCase/assets/45875987/f0005e11-350f-4f19-9917-d57581296965" alt="Design" width="900"/>
+<img src="https://github.com/omersuve/DreamCase/assets/45875987/f0005e11-350f-4f19-9917-d57581296965" alt="Design" width="1000"/>

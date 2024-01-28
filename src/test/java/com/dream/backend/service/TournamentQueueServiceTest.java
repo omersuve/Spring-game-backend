@@ -39,14 +39,14 @@ public class TournamentQueueServiceTest {
     }
 
     @Test
-    void isGroupAppropriateTrue() throws Exception {
+    void testIsGroupAppropriateTrue() throws Exception {
         Method test = TournamentQueueService.class.getDeclaredMethod("isGroupAppropriate", Country.class, TournamentGroup.class);
         test.setAccessible(true);
         assertThat(test.invoke(this.tournamentQueueService, Country.USA, this.tournamentGroup)).isEqualTo(true);
     }
 
     @Test
-    void isGroupAppropriateFalse() throws Exception {
+    void testIsGroupAppropriateFalse() throws Exception {
         Method test = TournamentQueueService.class.getDeclaredMethod("isGroupAppropriate", Country.class, TournamentGroup.class);
         test.setAccessible(true);
         assertThat(test.invoke(this.tournamentQueueService, Country.TURKEY, this.tournamentGroup)).isEqualTo(false);

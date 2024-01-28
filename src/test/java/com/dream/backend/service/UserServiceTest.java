@@ -39,7 +39,7 @@ public class UserServiceTest {
     }
 
     @Test
-    void getUser() {
+    void testGetUser() {
         mock(User.class);
         mock(UserRepository.class);
         when(this.userRepository.findById(this.user.getId())).thenReturn(Optional.ofNullable(this.user));
@@ -47,7 +47,7 @@ public class UserServiceTest {
     }
 
     @Test
-    void createUser() {
+    void testCreateUser() {
         mock(User.class);
         mock(UserRepository.class);
         when(this.userRepository.save(this.user)).thenReturn(this.user);
@@ -55,7 +55,7 @@ public class UserServiceTest {
     }
 
     @Test
-    void getRandomCountry() throws Exception {
+    void testGetRandomCountry() throws Exception {
         Method test = UserService.class.getDeclaredMethod("getRandomCountry");
         test.setAccessible(true);
         assertThat(test.invoke(this.userService) instanceof Country).isTrue();

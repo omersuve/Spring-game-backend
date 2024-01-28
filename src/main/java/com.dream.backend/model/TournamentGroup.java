@@ -24,16 +24,6 @@ public class TournamentGroup implements Serializable {
     private boolean isUSA = false;
     private List<Long> users = new ArrayList<>();
 
-//    public TournamentGroup(String id, boolean isTurkey, boolean isFrance, boolean isGerman, boolean isUK, boolean isUSA, List<Long> users) {
-//        this.id = id;
-//        this.isTurkey = isTurkey;
-//        this.isFrance = isFrance;
-//        this.isGerman = isGerman;
-//        this.isUK = isUK;
-//        this.isUSA = isUSA;
-//        this.users = users;
-//    }
-
     public TournamentGroup() {
     }
 }

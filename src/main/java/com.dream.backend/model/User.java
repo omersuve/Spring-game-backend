@@ -25,16 +25,6 @@ public class User {
     private boolean inTournament = false;
     private boolean waitingTournament = false;
 
-//    public User(String username, Integer level, Country country, Integer coin, Integer rewardToClaim, boolean inTournament, boolean waitingTournament) {
-//        this.level = level;
-//        this.country = country;
-//        this.coin = coin;
-//        this.rewardToClaim = rewardToClaim;
-//        this.inTournament = inTournament;
-//        this.username = username;
-//        this.waitingTournament = waitingTournament;
-//    }
-
     public User() {
     }
 }

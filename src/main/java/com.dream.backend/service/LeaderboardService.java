@@ -21,10 +21,10 @@ import org.springframework.stereotype.Service;
 public class LeaderboardService {
     private final ZSetOperations<String, Long> groupLeaderboard;
     private final ZSetOperations<String, String> countryLeaderboard;
-    private static boolean tournamentSet = false;
     private final UserRepository userRepository;
     private final TournamentQueueService tournamentQueueService;
     private final HashOperations<String, Long, String> userGroup;
+    private static boolean tournamentSet = false;
 
     @Autowired
     public LeaderboardService(RedisTemplate<String, Long> redisTemplateGroup, RedisTemplate<String, String> redisTemplate, HashOperations<String, Long, String> userGroup, UserRepository userRepository, TournamentQueueService tournamentQueueService) {
@@ -35,7 +35,11 @@ public class LeaderboardService {
         this.tournamentQueueService = tournamentQueueService;
     }
 
-    @Scheduled(cron = "0 42 15 * * *", zone = "UTC")
+    // Tournaments start at 00:00 UTC daily
+    // Just after beginning, it clears the Leaderboard and User Groups data
+    // Just after beginning, it clears the Tournament Groups data
+    // Just after beginning, it resets Country scores
+    @Scheduled(cron = "0 0 0 * * *", zone = "UTC")
     private void setTournament() {
         tournamentSet = true;
         System.out.println("Flag set at 00:00 UTC");
@@ -51,7 +55,12 @@ public class LeaderboardService {
 
     }
 
-    @Scheduled(cron = "0 49 15 * * *", zone = "UTC")
+    // Tournaments end at 20:00 UTC daily
+    // Just before ending, it clears the Tournament Queue
+    // Just before ending, it clears the User values of waiting for a tournament
+    // Just before ending, it clears the User values of in tournament
+    // Just before ending, it rewards Users in rank 1 and 2
+    @Scheduled(cron = "0 0 20 * * *", zone = "UTC")
     private void unsetTournament() {
         List<User> usersInTournament = userRepository.findByInTournamentIsTrue();
         List<User> usersWaitingTournament = userRepository.findByWaitingTournamentIsTrue();
@@ -77,10 +86,12 @@ public class LeaderboardService {
         tournamentSet = false;
     }
 
+    // Returns the tournament status
     public static boolean isFlagSet() {
         return tournamentSet;
     }
 
+    // Clears the group leaderboard cache and group cache of users
     public void clearLeaderboardsAndUserGroupData() {
         Set<String> keys = this.groupLeaderboard.getOperations().keys("leaderboard:*");
         if (keys != null) {
@@ -92,6 +103,7 @@ public class LeaderboardService {
                 this.userGroup.delete("UserGroup", hashKey));
     }
 
+    // Performs the User to have the updated score in GroupLeaderboard cache for its groupId
     public void addOrUpdateUserScore(Long userId, String groupId, double score) {
         if (tournamentSet) {
             String key = this.getGroupKey(groupId);
@@ -99,40 +111,47 @@ public class LeaderboardService {
         }
     }
 
+    // Performs the Country to have the updated score in CountryLeaderboard cache
     public void addOrUpdateCountryScore(Country country, double score) {
         if (tournamentSet) {
             this.countryLeaderboard.add(this.getCountriesKey(), country.toString(), score);
         }
     }
 
+    // Performs the User to have the groupId as its value in UserGroup cache
     public void initUserToGroup(Long userId, String groupId) {
         if (tournamentSet) {
             this.userGroup.put("UserGroup", userId, groupId);
         }
     }
 
+    // Returns the group id of the given User
     public String getGroupOfUser(Long userId) {
         return this.userGroup.get("UserGroup", userId);
     }
 
+    // Returns the score of the User within the group
     public Double getGroupScore(Long userId) {
         String groupId = this.getGroupOfUser(userId);
         return groupId != null ? this.groupLeaderboard.score(this.getGroupKey(groupId), userId) : null;
     }
 
+    // Returns the score of the Country
     public Double getCountryScore(Country country) {
         return !tournamentSet ? null : this.countryLeaderboard.score(this.getCountriesKey(), country.toString());
     }
 
+    // Returns the list of users competing within the given group id ordered by decreasing their score
     public List<GroupLeaderboardDto> getGroupLeaderboard(String groupId) {
         String key = this.getGroupKey(groupId);
-        Iterable<ZSetOperations.TypedTuple<Long>> groupLeaderboard =  this.groupLeaderboard.reverseRangeWithScores(key, 0L, -1L);
-        if(groupLeaderboard == null) return null;
+        Iterable<ZSetOperations.TypedTuple<Long>> groupLeaderboard = this.groupLeaderboard.reverseRangeWithScores(key, 0L, -1L);
+        if (groupLeaderboard == null) return null;
         List<Long> userIds = tournamentQueueService.getUsersInTournamentGroup(groupId);
         List<User> users = userRepository.findByIdIn(userIds);
         return LeaderboardMapper.convertGroupLeaderboard(groupLeaderboard, users, groupId);
     }
 
+    // Returns the rank of the user
     public Long getUserRankInGroup(Long userId) {
         String groupId = this.getGroupOfUser(userId);
         String key = this.getGroupKey(groupId);
@@ -140,16 +159,19 @@ public class LeaderboardService {
         return rank != null ? rank + 1L : null;
     }
 
+    // Returns the list of Countries competing ordered by decreasing their score
     public List<CountryLeaderboardDto> getCountryLeaderboard() {
         Iterable<ZSetOperations.TypedTuple<String>> countryLeaderboard = this.countryLeaderboard.reverseRangeWithScores(this.getCountriesKey(), 0L, -1L);
-        if(countryLeaderboard == null) return null;
+        if (countryLeaderboard == null) return null;
         return LeaderboardMapper.convertCountryLeaderboard(countryLeaderboard);
     }
 
+    // Returns the key for the given groupId of the GroupLeaderboard cache
     private String getGroupKey(String groupId) {
         return "leaderboard:" + groupId;
     }
 
+    // Returns the key of the CountryLeaderboard cache
     private String getCountriesKey() {
         return "country";
     }

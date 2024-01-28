@@ -6,6 +6,7 @@ import com.dream.backend.model.User;
 import com.dream.backend.repository.UserRepository;
 import com.dream.backend.response.ResponseHandler;
 
+import java.util.Optional;
 import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,36 +27,40 @@ public class UserService {
         this.leaderboardService = leaderboardService;
     }
 
+    // Gets the User by id or returns null
     public User getUser(Long userId) {
-        try {
-            if (this.userRepository.findById(userId).isPresent()) {
-                return this.userRepository.findById(userId).get();
-            }
-        } catch (Exception var3) {
-            System.out.printf("Error: %s%n", var3);
-        }
-        return null;
+        Optional<User> user = this.userRepository.findById(userId);
+        return user.orElse(null);
     }
 
+    // Creates a User, sets default values and a random Country
     public ResponseEntity<Object> createUser(User user) {
         try {
             user.setCountry(this.getRandomCountry());
+            user.setLevel(1);
+            user.setCoin(5000);
+            user.setRewardToClaim(-1);
+            user.setInTournament(false);
+            user.setWaitingTournament(false);
             return ResponseHandler.responseBuilder("User created successfully!", HttpStatus.OK, this.userRepository.save(user));
-        } catch (Exception var3) {
-            System.out.printf("Error: %s%n", var3);
+        } catch (Exception e) {
+            System.out.printf("Error: %s%n", e);
             return ResponseHandler.responseBuilder("Error while creating the User!", HttpStatus.INTERNAL_SERVER_ERROR, null);
         }
     }
 
+    // Updates the User
     public void updateUser(User user) {
         try {
             this.userRepository.save(user);
-        } catch (Exception var3) {
-            System.out.printf("Error: %s%n", var3);
+        } catch (Exception e) {
+            System.out.printf("Error: %s%n", e);
         }
-
     }
 
+    // Increments the User level by 1
+    // Increments the User gold by 25
+    // Updates the leaderboards if given User has entered the tournament
     public ResponseEntity<Object> incrementUserLevel(Long userId) {
         try {
             User user = this.getUser(userId);
@@ -66,28 +71,25 @@ public class UserService {
                 String groupId = this.leaderboardService.getGroupOfUser(userId);
                 if (groupId != null) {
                     Double currentScore = this.leaderboardService.getGroupScore(userId);
-                    if (currentScore != null) {
+                    if (currentScore != null)
                         this.leaderboardService.addOrUpdateUserScore(userId, groupId, currentScore + 1.0);
-                    }
-
                     Double currentCountryScore = this.leaderboardService.getCountryScore(user.getCountry());
-                    if (currentCountryScore != null) {
+                    if (currentCountryScore != null)
                         this.leaderboardService.addOrUpdateCountryScore(user.getCountry(), currentCountryScore + 1.0);
-                    }
-
                     return ResponseHandler.responseBuilder("User level up successfully and its score incremented in tournament!", HttpStatus.OK, user);
-                } else {
+                } else
                     return ResponseHandler.responseBuilder("User level up successfully!", HttpStatus.OK, user);
-                }
-            } else {
+            } else
                 return ResponseHandler.responseBuilder("User not found!", HttpStatus.NOT_FOUND, null);
-            }
-        } catch (Exception var6) {
-            System.out.printf("Error: %s%n", var6);
+        } catch (Exception e) {
+            System.out.printf("Error: %s%n", e);
             return ResponseHandler.responseBuilder("Error while updating the User level!", HttpStatus.INTERNAL_SERVER_ERROR, null);
         }
     }
 
+
+    // Provide User to claim the rewards of given user if there is any rewards to claim
+    // Sets user reward to -1 after the claim
     public ResponseEntity<Object> claimReward(Long userId) {
         User user = this.getUser(userId);
         if (user == null) {
@@ -102,6 +104,10 @@ public class UserService {
         }
     }
 
+    // Provide User to enter the tournament if there is a tournament to enter
+    // Checks several conditions to be able to enter
+    // After entering, it sets the user as waiting if there is not 5 people in the group
+    // After entering, it sets the user as in tournament if 5 people matched
     public ResponseEntity<Object> enterTournament(Long userId) {
         if (!LeaderboardService.isFlagSet())
             return ResponseHandler.responseBuilder("There is no tournament!", HttpStatus.NOT_FOUND, null);
@@ -113,8 +119,8 @@ public class UserService {
                 return ResponseHandler.responseBuilder("User has already entered a tournament group!", HttpStatus.BAD_REQUEST, null);
             else if (user.getRewardToClaim() != -1)
                 return ResponseHandler.responseBuilder("User cannot join the tournament due to having unclaimed rewards!", HttpStatus.BAD_REQUEST, null);
-//            else if (user.getLevel() < 20)
-//                return ResponseHandler.responseBuilder("User cannot join the tournament due to being under 20 level!", HttpStatus.BAD_REQUEST, null);
+            else if (user.getLevel() < 20)
+                return ResponseHandler.responseBuilder("User cannot join the tournament due to being under 20 level!", HttpStatus.BAD_REQUEST, null);
             else if (user.getCoin() < 1000)
                 return ResponseHandler.responseBuilder("User doesn't have 1000 gold to participate!", HttpStatus.BAD_REQUEST, null);
             else if (user.isInTournament())
@@ -143,6 +149,7 @@ public class UserService {
         }
     }
 
+    // Helper function to get random Country
     private Country getRandomCountry() {
         Country[] countries = Country.values();
         Random random = new Random();

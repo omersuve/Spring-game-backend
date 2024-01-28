@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -24,17 +23,20 @@ public class TournamentQueueService {
         this.tournamentGroups = hashOperationsForTournamentGroup;
     }
 
+    // Clears the group queue cache
     public void clearTournamentQueue() {
         this.tournamentQueue.trim("GroupQueue", 0L, 0L);
     }
 
+    // Clears the tournament group cache
     public void clearTournamentGroups() {
         this.tournamentGroups.entries("TournamentGroups").keySet().forEach(hashKey ->
                 this.tournamentGroups.delete("TournamentGroups", hashKey));
     }
 
-
-    @Nullable
+    // Process the queue and fill the group if 5 users from different countries are matched
+    // Returns the TournamentGroup data if match occurs
+    // Returns null if no match occurred yet
     public TournamentGroup processQueue(User user) {
         Long queueSize = this.tournamentQueue.size(this.getQueueName());
         if (queueSize == null) return null;
@@ -49,7 +51,7 @@ public class TournamentQueueService {
                 TournamentGroup existingGroup = this.tournamentGroups.get(this.getHashName(), groupId);
                 if (existingGroup == null) return null;
                 if (this.isGroupAppropriate(user.getCountry(), existingGroup)) {
-                    TournamentGroup changed = this.changeObject(user.getCountry(), existingGroup, user.getId());
+                    TournamentGroup changed = this.addCountryAndUserToGroup(user.getCountry(), existingGroup, user.getId());
                     if (changed.getUsers().size() == 5) {
                         this.tournamentQueue.remove(this.getQueueName(), 0L, groupId);
                         this.tournamentGroups.put(this.getHashName(), groupId, changed);
@@ -64,17 +66,20 @@ public class TournamentQueueService {
         return null;
     }
 
+    // Creates a TournamentGroup and adds to the queue
     private void createTournamentGroupAddToQueue(User user) {
         TournamentGroup newObj = new TournamentGroup();
-        TournamentGroup changed = this.changeObject(user.getCountry(), newObj, user.getId());
-        this.addToQueue(this.getQueueName(), changed.getId());
+        TournamentGroup changed = this.addCountryAndUserToGroup(user.getCountry(), newObj, user.getId());
+        this.addToQueue(changed.getId());
         this.tournamentGroups.put(this.getHashName(), changed.getId(), changed);
     }
 
-    private void addToQueue(String queueName, String groupId) {
-        this.tournamentQueue.rightPush(queueName, groupId);
+    // Adds the groupId to the Queue
+    private void addToQueue(String groupId) {
+        this.tournamentQueue.rightPush(this.getQueueName(), groupId);
     }
 
+    // Checks if given country can be added to the group or not
     private boolean isGroupAppropriate(Country country, TournamentGroup existingObj) {
         return switch (country) {
             case UK -> !existingObj.isUK();
@@ -85,7 +90,8 @@ public class TournamentQueueService {
         };
     }
 
-    private TournamentGroup changeObject(Country country, TournamentGroup existingObj, Long userId) {
+    // Adds the given Country and UserId to the group
+    private TournamentGroup addCountryAndUserToGroup(Country country, TournamentGroup existingObj, Long userId) {
         switch (country) {
             case UK:
                 existingObj.setUK(true);
@@ -109,6 +115,7 @@ public class TournamentQueueService {
         return existingObj;
     }
 
+    // Gets the userIds within the given groupId
     public List<Long> getUsersInTournamentGroup(String groupId) {
         TournamentGroup existingGroup = this.tournamentGroups.get(this.getHashName(), groupId);
         if (existingGroup != null)
@@ -116,10 +123,12 @@ public class TournamentQueueService {
         return null;
     }
 
+    // Gets hash name of TournamentGroups cache
     private String getHashName() {
         return "TournamentGroups";
     }
 
+    // Gets queue name of GroupQueue Queue
     private String getQueueName() {
         return "GroupQueue";
     }

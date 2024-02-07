@@ -1,3 +1,6 @@
+***Note***: I realized that I forgot to think about the simultanious read/write operations that need to be taken into acount.
+Still I wanted to add that on a new branch named *synchronized*, you can take a look if you want [here](https://github.com/omersuve/DreamCase/tree/synchronized).
+
 # DreamCase
 Dream Games Case Study
 

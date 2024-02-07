@@ -21,13 +21,14 @@ public class TournamentQueueServiceTest {
     private RedisTemplate<String, String> redisTemplate;
     private TournamentQueueService tournamentQueueService;
     private HashOperations<String, String, TournamentGroup> hashOperationsForTournamentGroup;
+    private Object queueLock;
     AutoCloseable autoCloseable;
     TournamentGroup tournamentGroup;
 
     @BeforeEach
     void setUp() {
         this.autoCloseable = openMocks(this);
-        this.tournamentQueueService = new TournamentQueueService(this.redisTemplate, this.hashOperationsForTournamentGroup);
+        this.tournamentQueueService = new TournamentQueueService(this.redisTemplate, this.hashOperationsForTournamentGroup, this.queueLock);
         this.tournamentGroup = new TournamentGroup();
         this.tournamentGroup.setTurkey(true);
         this.tournamentGroup.setUsers(new ArrayList<>(Collections.singletonList(1L)));

@@ -21,13 +21,14 @@ public class UserServiceTest {
     private UserService userService;
     private TournamentQueueService tournamentQueueService;
     private LeaderboardService leaderboardService;
+    private  Object updateCountryScoreLock;
     AutoCloseable autoCloseable;
     User user;
 
     @BeforeEach
     void setUp() {
         this.autoCloseable = openMocks(this);
-        this.userService = new UserService(this.userRepository, this.tournamentQueueService, this.leaderboardService);
+        this.userService = new UserService(this.userRepository, this.tournamentQueueService, this.leaderboardService, this.updateCountryScoreLock);
         this.user = new User();
         this.user.setUsername("omer");
         this.user.setCountry(Country.TURKEY);

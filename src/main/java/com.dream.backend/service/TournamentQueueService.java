@@ -7,6 +7,7 @@ import com.dream.backend.model.User;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -16,11 +17,13 @@ import org.springframework.stereotype.Service;
 public class TournamentQueueService {
     private final ListOperations<String, String> tournamentQueue;
     private final HashOperations<String, String, TournamentGroup> tournamentGroups;
+    private final Object queueLock;
 
     @Autowired
-    public TournamentQueueService(RedisTemplate<String, String> redisTemplate, HashOperations<String, String, TournamentGroup> hashOperationsForTournamentGroup) {
+    public TournamentQueueService(RedisTemplate<String, String> redisTemplate, HashOperations<String, String, TournamentGroup> hashOperationsForTournamentGroup, @Qualifier("primaryQueueLock") Object queueLock) {
         this.tournamentQueue = redisTemplate.opsForList();
         this.tournamentGroups = hashOperationsForTournamentGroup;
+        this.queueLock = queueLock;
     }
 
     // Clears the group queue cache
@@ -38,32 +41,34 @@ public class TournamentQueueService {
     // Returns the TournamentGroup data if match occurs
     // Returns null if no match occurred yet
     public TournamentGroup processQueue(User user) {
-        Long queueSize = this.tournamentQueue.size(this.getQueueName());
-        if (queueSize == null) return null;
-        if (queueSize == 0) {
+        synchronized (queueLock) {
+            Long queueSize = this.tournamentQueue.size(this.getQueueName());
+            if (queueSize == null) return null;
+            if (queueSize == 0) {
+                this.createTournamentGroupAddToQueue(user);
+                return null;
+            }
+            for (int i = 0; i < queueSize; i++) {
+                String groupId = this.tournamentQueue.index(this.getQueueName(), i);
+                if (groupId == null) return null;
+                if (this.tournamentGroups.hasKey(this.getHashName(), groupId)) {
+                    TournamentGroup existingGroup = this.tournamentGroups.get(this.getHashName(), groupId);
+                    if (existingGroup == null) return null;
+                    if (this.isGroupAppropriate(user.getCountry(), existingGroup)) {
+                        TournamentGroup changed = this.addCountryAndUserToGroup(user.getCountry(), existingGroup, user.getId());
+                        if (changed.getUsers().size() == 5) {
+                            this.tournamentQueue.remove(this.getQueueName(), 0L, groupId);
+                            this.tournamentGroups.put(this.getHashName(), groupId, changed);
+                            return changed;
+                        }
+                        this.tournamentGroups.put(this.getHashName(), groupId, changed);
+                        return null;
+                    }
+                }
+            }
             this.createTournamentGroupAddToQueue(user);
             return null;
         }
-        for (int i = 0; i < queueSize; i++) {
-            String groupId = this.tournamentQueue.index(this.getQueueName(), i);
-            if (groupId == null) return null;
-            if (this.tournamentGroups.hasKey(this.getHashName(), groupId)) {
-                TournamentGroup existingGroup = this.tournamentGroups.get(this.getHashName(), groupId);
-                if (existingGroup == null) return null;
-                if (this.isGroupAppropriate(user.getCountry(), existingGroup)) {
-                    TournamentGroup changed = this.addCountryAndUserToGroup(user.getCountry(), existingGroup, user.getId());
-                    if (changed.getUsers().size() == 5) {
-                        this.tournamentQueue.remove(this.getQueueName(), 0L, groupId);
-                        this.tournamentGroups.put(this.getHashName(), groupId, changed);
-                        return changed;
-                    }
-                    this.tournamentGroups.put(this.getHashName(), groupId, changed);
-                    return null;
-                }
-            }
-        }
-        this.createTournamentGroupAddToQueue(user);
-        return null;
     }
 
     // Creates a TournamentGroup and adds to the queue

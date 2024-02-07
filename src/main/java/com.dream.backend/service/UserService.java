@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -19,12 +20,14 @@ public class UserService {
     private final UserRepository userRepository;
     private final TournamentQueueService tournamentQueueService;
     private final LeaderboardService leaderboardService;
+    private final Object updateCountryScoreLock;
 
     @Autowired
-    public UserService(UserRepository userRepository, TournamentQueueService tournamentQueueService, LeaderboardService leaderboardService) {
+    public UserService(UserRepository userRepository, TournamentQueueService tournamentQueueService, LeaderboardService leaderboardService, @Qualifier("primaryUpdateCountryScoreLock") Object updateCountryScoreLock) {
         this.userRepository = userRepository;
         this.tournamentQueueService = tournamentQueueService;
         this.leaderboardService = leaderboardService;
+        this.updateCountryScoreLock = updateCountryScoreLock;
     }
 
     // Gets the User by id or returns null
@@ -73,9 +76,11 @@ public class UserService {
                     Double currentScore = this.leaderboardService.getGroupScore(userId);
                     if (currentScore != null)
                         this.leaderboardService.addOrUpdateUserScore(userId, groupId, currentScore + 1.0);
-                    Double currentCountryScore = this.leaderboardService.getCountryScore(user.getCountry());
-                    if (currentCountryScore != null)
-                        this.leaderboardService.addOrUpdateCountryScore(user.getCountry(), currentCountryScore + 1.0);
+                    synchronized (updateCountryScoreLock) {
+                        Double currentCountryScore = this.leaderboardService.getCountryScore(user.getCountry());
+                        if (currentCountryScore != null)
+                            this.leaderboardService.addOrUpdateCountryScore(user.getCountry(), currentCountryScore + 1.0);
+                    }
                     return ResponseHandler.responseBuilder("User level up successfully and its score incremented in tournament!", HttpStatus.OK, user);
                 } else
                     return ResponseHandler.responseBuilder("User level up successfully!", HttpStatus.OK, user);

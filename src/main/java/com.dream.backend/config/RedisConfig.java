@@ -3,6 +3,7 @@ package com.dream.backend.config;
 import com.dream.backend.model.TournamentGroup;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -46,5 +47,17 @@ public class RedisConfig {
     @Bean
     public HashOperations<String, String, TournamentGroup> hashOperationsForTournamentGroup(RedisTemplate<String, TournamentGroup> tournamentGroupRedisTemplate) {
         return tournamentGroupRedisTemplate.opsForHash();
+    }
+
+    @Bean
+    @Primary
+    public Object primaryQueueLock() {
+        return new Object();
+    }
+
+    @Bean
+    @Primary
+    public Object primaryUpdateCountryScoreLock() {
+        return new Object();
     }
 }
